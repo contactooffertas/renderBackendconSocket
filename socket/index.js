@@ -12,7 +12,7 @@ function initSocket(httpServer) {
   const io = new Server(httpServer, {
     cors: {
       origin: [
-        "http://localhost:3000",
+        "https://ofertas-lime-ten.vercel.app",
       ],
       methods:     ["GET", "POST"],
       credentials: true,
@@ -136,5 +136,6 @@ function initSocket(httpServer) {
 
   return io;
 }
+
 
 module.exports = { initSocket };
