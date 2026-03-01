@@ -28,7 +28,7 @@ connectDB();
 
 // ── Middlewares globales ──────────────────────────────────────────────────────
 app.use(cors({
-  origin:      process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: 'https://ofertas-lime-ten.vercel.app',
   credentials: true,
 }));
 app.use(express.json());
@@ -66,5 +66,6 @@ httpServer.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
   console.log(`🔌 Socket.IO listo`);
 });
+
 
 module.exports = { app, httpServer, io };
