@@ -9,6 +9,9 @@
     active:        { type: Boolean, default: true },
     createdBy:     { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   }, { timestamps: true });
+readBy:        [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+}, { timestamps: true });
+
   module.exports = mongoose.model("Announcement", announcementSchema);
 
   
