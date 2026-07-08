@@ -7,7 +7,30 @@ const cloudinary = require("../config/cloudinary");
 const fs = require("fs");
 
 function getPushNotifier() {
-  return require("../routes/pushRoute").notifyBusinessFollowers;
+  try {
+    return require("../routes/pushRoute").notifyBusinessFollowers;
+  } catch (err) {
+    console.error("[getPushNotifier] No se pudo cargar notifyBusinessFollowers:", err);
+    return null;
+  }
+}
+
+/**
+ * Dispara el push a los seguidores del negocio SIN bloquear la respuesta
+ * al vendedor, pero con logging real — si esto falla, ahora se va a ver
+ * en los logs del servidor en vez de desaparecer en silencio.
+ */
+async function triggerFollowerPush({ businessId, businessName, productName, productId, productImageUrl }) {
+  const notify = getPushNotifier();
+  if (!notify) {
+    console.error("[triggerFollowerPush] notifyBusinessFollowers no está disponible — revisar pushRoute.js");
+    return;
+  }
+  try {
+    await notify({ businessId, businessName, productName, productId, productImageUrl });
+  } catch (err) {
+    console.error(`[triggerFollowerPush] Falló para negocio ${businessName} (${businessId}):`, err);
+  }
 }
 
 /* ── Helper: notificación en BD ───────────────────────────────────────────── */
@@ -88,13 +111,16 @@ exports.createProduct = async (req, res) => {
       blockedReason:  "",
     });
 
-    getPushNotifier()({
+    // ── Push real a los seguidores del negocio — con logging visible ────────
+    // Fire-and-forget: no bloquea la respuesta al vendedor, pero ahora
+    // cualquier error queda en los logs del servidor en vez de perderse.
+    triggerFollowerPush({
       businessId:      business._id.toString(),
       businessName:    business.name,
       productName:     newProduct.name,
       productId:       newProduct._id.toString(),
       productImageUrl: newProduct.image,
-    }).catch(() => {});
+    });
 
     res.status(201).json(newProduct);
   } catch (err) {
@@ -165,7 +191,6 @@ exports.requestProductReview = async (req, res) => {
     const product = await Product.findById(id).populate("businessId", "name owner");
     if (!product) return res.status(404).json({ message: "Producto no encontrado" });
 
-    // Verificar que el producto pertenece al usuario autenticado
     const business = await Business.findOne({ owner: req.user.id });
     if (!business || product.businessId?._id?.toString() !== business._id.toString()) {
       return res.status(403).json({ message: "No tenés permiso para gestionar este producto" });
@@ -187,7 +212,6 @@ exports.requestProductReview = async (req, res) => {
     product.reviewNote  = note;
     await product.save();
 
-    // Notificar a todos los admins via socket
     const io = req.app.get("io");
     if (io) {
       io.to("admins").emit("product_review_requested", {
@@ -199,7 +223,6 @@ exports.requestProductReview = async (req, res) => {
       });
     }
 
-    // Notificación en BD para admins
     const admins = await User.find({ role: "admin" }).select("_id").lean();
     for (const admin of admins) {
       await createDBNotification(
