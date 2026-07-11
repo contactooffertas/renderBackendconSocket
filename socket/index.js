@@ -85,7 +85,7 @@ function initSocket(httpServer) {
 
     // Unirse a la sala de una conversación específica
     // El chatController emite a user_${pid} (sala personal), no a conv_${id},
-    // pero join_conv sirve para typing/stop_typing que sí usan conv_${id}
+    // pero join_conv sirve para typing/stop_typing y read_messages que sí usan conv_${id}
     socket.on("join_conv", ({ conversationId }) => {
       if (conversationId) {
         socket.join(`conv_${conversationId}`);
@@ -93,8 +93,13 @@ function initSocket(httpServer) {
       }
     });
 
+    // FIX: antes esto era socket.broadcast.emit(...) — se mandaba a TODOS los
+    // sockets conectados al server, no solo a los que están en esa conversación.
+    // Lo acotamos a la sala conv_${conversationId} (misma sala que typing/stop_typing),
+    // así el "visto"/doble tilde llega en tiempo real solo a quien corresponde.
     socket.on("read_messages", ({ conversationId }) => {
-      socket.broadcast.emit("messages_read", { conversationId });
+      if (!conversationId) return;
+      socket.to(`conv_${conversationId}`).emit("messages_read", { conversationId });
     });
 
     socket.on("typing", ({ conversationId }) => {
