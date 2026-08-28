@@ -28,6 +28,7 @@ connectDB();
 
 // ── Middlewares globales ──────────────────────────────────────────────────────
 app.use(cors({
+  origin: 'https://rosariomarket.com.ar',
   origin: 'https://ofertas-lime-ten.vercel.app',
   credentials: true,
 }));
