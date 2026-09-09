@@ -29,8 +29,6 @@ connectDB();
 const ALLOWED_ORIGINS = [
   'https://rosariomarket.com.ar',
   'https://www.rosariomarket.com.ar',
-  'https://ofertas-lime-ten.vercel.app',
-  'http://localhost:3000',
 ];
 
 const isAllowedOrigin = (origin) => (
