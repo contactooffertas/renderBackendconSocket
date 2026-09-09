@@ -12,7 +12,10 @@ function initSocket(httpServer) {
   const io = new Server(httpServer, {
     cors: {
       origin: [
+        "https://rosariomarket.com.ar",
+        "https://www.rosariomarket.com.ar",
         "https://ofertas-lime-ten.vercel.app",
+        "http://localhost:3000",
       ],
       methods:     ["GET", "POST"],
       credentials: true,
@@ -141,6 +144,5 @@ function initSocket(httpServer) {
 
   return io;
 }
-
 
 module.exports = { initSocket };
