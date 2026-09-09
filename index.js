@@ -22,27 +22,41 @@ const terminosRoutes        = require('./routes/terminosRoute');
 const eliminaUsuarioRoutes  = require('./routes/eliminarUsuarioRoute');
 const { router: pushRoutes } = require('./routes/pushRoute');
 
-// ─────────────────────────────────────────────────────────────────────────────
 const app = express();
 connectDB();
 
-// ── Middlewares globales ──────────────────────────────────────────────────────
+// ── CORS compartido con el frontend de producción ─────────────────────────────
+const ALLOWED_ORIGINS = [
+  'https://rosariomarket.com.ar',
+  'https://www.rosariomarket.com.ar',
+  'https://ofertas-lime-ten.vercel.app',
+  'http://localhost:3000',
+];
+
+const isAllowedOrigin = (origin) => (
+  !origin ||
+  ALLOWED_ORIGINS.includes(origin) ||
+  /^https:\/\/ofertas-[a-z0-9-]+-contactooffertas-projects\.vercel\.app$/.test(origin)
+);
+
 app.use(cors({
-  origin: 'https://rosariomarket.com.ar',
-  origin: 'https://www.rosariomarket.com.ar',
-  origin: 'https://ofertas-lime-ten.vercel.app',
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) return callback(null, true);
+    return callback(new Error(`CORS bloqueado: ${origin}`));
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ── Health check ──────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Servidor de Offertas conectado' });
 });
 
-// ── Rutas de la API ───────────────────────────────────────────────────────────
 app.use('/api/auth',            authRoutes);
 app.use('/api/user',            userRoutes);
 app.use('/api/business',        busiRoutes);
@@ -57,17 +71,14 @@ app.use('/api/announcements',   announcementRoutes);
 app.use('/api/terminos',        terminosRoutes);
 app.use('/api/elimina-usuario', eliminaUsuarioRoutes);
 
-// ── Crear servidor HTTP + inicializar Socket.IO ───────────────────────────────
 const httpServer = http.createServer(app);
 const io         = initSocket(httpServer);
 app.set('io', io);
 
-// ── Arrancar siempre ──────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
   console.log(`🔌 Socket.IO listo`);
 });
-
 
 module.exports = { app, httpServer, io };
