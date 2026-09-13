@@ -2,6 +2,7 @@
 const { Server } = require("socket.io");
 const jwt        = require("jsonwebtoken");
 const User       = require("../models/userModel");
+const { Conversation } = require("../models/chatModel");
 
 /**
  * initSocket(httpServer)
@@ -89,10 +90,30 @@ function initSocket(httpServer) {
     // Unirse a la sala de una conversación específica
     // El chatController emite a user_${pid} (sala personal), no a conv_${id},
     // pero join_conv sirve para typing/stop_typing y read_messages que sí usan conv_${id}
-    socket.on("join_conv", ({ conversationId }) => {
-      if (conversationId) {
+    socket.on("join_conv", async ({ conversationId }) => {
+      if (conversationId && await Conversation.exists({ _id: conversationId, participants: uid })) {
         socket.join(`conv_${conversationId}`);
         console.log(`[WS] ${uid} joined conv_${conversationId}`);
+      }
+    });
+
+    // Puente seguro Vercel → Socket: después de una mutación REST el cliente
+    // avisa a Render. Render verifica la membresía y ordena sincronizar a ambos.
+    socket.on("sync_conversation", async ({ conversationId, reason = "update" } = {}) => {
+      if (!conversationId) return;
+      try {
+        const conv = await Conversation.findOne({ _id: conversationId, participants: uid })
+          .select("participants").lean();
+        if (!conv) return;
+        conv.participants.forEach(pid => {
+          io.to(`user_${pid.toString()}`).emit("conversation_sync", {
+            conversationId: conversationId.toString(),
+            reason,
+            actorId: uid,
+          });
+        });
+      } catch (error) {
+        console.warn(`[WS] sync_conversation rechazado: ${error.message}`);
       }
     });
 

@@ -26,6 +26,17 @@ const conversationSchema = new mongoose.Schema(
         ref:  'User',
       },
     ],
+    clearedAtBy: [{
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+      at:   { type: Date, required: true },
+    }],
+    blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    temporaryMode: {
+      enabled:   { type: Boolean, default: false },
+      ttlHours:  { type: Number, default: 24 },
+      enabledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+      updatedAt: { type: Date, default: null },
+    },
 
     // ── Bloqueo por reporte ───────────────────────────────────────────────
     // Cuando un user reporta al otro, la conv queda congelada para ambos.
@@ -58,6 +69,15 @@ const messageSchema = new mongoose.Schema(
     },
     text:  { type: String, default: ''   },
     image: { type: String, default: null },
+    editedAt: { type: Date, default: null },
+    replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
+    replySnapshot: {
+      messageId: { type: mongoose.Schema.Types.ObjectId, default: null },
+      text: { type: String, default: '' },
+      image: { type: String, default: null },
+      senderName: { type: String, default: '' },
+    },
+    expiresAt: { type: Date, default: null },
     readBy: [
       { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     ],
@@ -69,6 +89,7 @@ const messageSchema = new mongoose.Schema(
 );
 
 messageSchema.index({ conversation: 1, createdAt: 1 });
+messageSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0, partialFilterExpression: { expiresAt: { $type: 'date' } } });
 
 // ════════════════════════════════════════════════
 //  EXPORTS
